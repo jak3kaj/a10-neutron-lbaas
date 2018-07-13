@@ -296,9 +296,3 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
         return super(A10DevicePlugin, self).delete_a10_device_value(context, id)
 
 
-class A10DeviceInstancePlugin(A10DevicePlugin):
-    """For backwards compatibility with the service_plugin name used in the neutron.conf file:
-    a10_neutron_lbaas.neutron_ext.services.a10_device_instance.plugin.A10DeviceInstancePlugin
-    """
-    pass
-
