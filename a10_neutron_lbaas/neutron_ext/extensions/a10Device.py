@@ -141,7 +141,7 @@ class A10DeviceInUseError(exceptions.InUse):
     def __init__(self, a10_device_id):
         self.message = _("A10 Device is in use and cannot be deleted.")
         self.msg = self.message
-        super(A10DeviceInUseError, self).__iinit__()
+        super(A10DeviceInUseError, self).__init__()
 
 
 @six.add_metaclass(abc.ABCMeta)
