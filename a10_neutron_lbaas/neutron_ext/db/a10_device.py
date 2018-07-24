@@ -19,6 +19,7 @@ from a10_openstack_lib.resources import a10_device as a10_device_resources
 from neutron.db import common_db_mixin
 from neutron.api.v2.base import Controller
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.exc import ProgrammingError
 
 from a10_neutron_lbaas import a10_config
 from a10_neutron_lbaas.db import models
@@ -162,10 +163,21 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                         page_reverse=False):
         LOG.debug("A10DeviceDbMixin:get_a10_devices() tenant_id=%s" %
                   (context.tenant_id))
-        return self._get_collection(context, models.A10Device,
+
+        # Catch database error when a10_device table doesn't exist yet and return an empty list
+        try: 
+            return self._get_collection(context, models.A10Device,
                                     self._make_a10_device_dict, filters=filters,
                                     fields=fields, sorts=sorts, limit=limit,
                                     marker_obj=marker, page_reverse=page_reverse)
+        except ProgrammingError as e:
+            # NO_SUCH_TABLE = 1146 in https://github.com/PyMySQL/PyMySQL/blob/master/pymysql/constants/ER.py
+            if '1146' in e.message:
+                LOG.debug("A10DeviceDbMixin:get_a10_devices() Handling \"Table Doesn't Exist\" ProgrammingError Exception:  %s" % 
+                      ( e.message ))
+                return []
+            else:
+                raise
 
     def delete_a10_device(self, context, id):
         with context.session.begin(subtransactions=True):
