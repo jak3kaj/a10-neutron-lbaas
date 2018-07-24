@@ -84,7 +84,7 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
 
     def get_a10_vthunders(self, context, filters=None, fields=None):
         LOG.debug(
-            "A10DevicePlugin.get_vthunder(): filters=%s, fields=%s",
+            "A10DevicePlugin.get_a10_vthunders(): filters=%s, fields=%s",
             filters,
             fields)
 
@@ -133,7 +133,7 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
         return vthunder_dict 
 
     def get_a10_vthunder(self, context, id, fields=None):
-        LOG.debug("A10DevicePlugin.get_vthunder(): id=%s, fields=%s",
+        LOG.debug("A10DevicePlugin.get_a10_vthunder(): id=%s, fields=%s",
                   id, fields)
         db_instance = super(A10DevicePlugin, self).get_a10_device(
             context, id, fields=fields)
