@@ -322,7 +322,15 @@ class ListenerHandler(handler_base_v2.HandlerBaseV2):
         return c.a10_driver.config.get_vport_defaults()
 
     def _get_device_vport_defaults(self, c):
-        return c.device_cfg.get("vport_defaults")
+        rv {}
+
+        # We made the unfortunate decision to override the get function
+        # This results in the inability to specify a default empty dict for non-existent values
+        try:
+            rv = c.device_cfg.get("vport_defaults")
+        except:
+            pass
+        return rv
 
     def _get_vport_defaults(self, c, vport_name):
         rv = {}
