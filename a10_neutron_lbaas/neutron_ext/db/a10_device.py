@@ -30,6 +30,7 @@ from neutron.api.v2 import resource_helper
 
 from a10_neutron_lbaas.neutron_ext.common import attributes
 from a10_neutron_lbaas.neutron_ext.common import constants
+from a10_neutron_lbaas.etc import defaults
 
 
 LOG = logging.getLogger(__name__)
@@ -133,21 +134,21 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                 tenant_id=context.tenant_id,
                 name=body.get('name', ''),
                 description=body.get('description', ''),
+                host=body['host'],
                 username=body['username'],
                 password=body['password'],
                 api_version=body['api_version'],
-                protocol=body['protocol'],
-                port=body['port'],
-                autosnat=body['autosnat'],
-                v_method=body['v_method'],
-                shared_partition=body['shared_partition'],
-                use_float=body['use_float'],
-                default_virtual_server_vrid=body['default_virtual_server_vrid'],
-                ipinip=body['ipinip'],
+                protocol=body.get('protocol', defaults.DEVICE_OPTIONAL_DEFAULTS['protocol']),
+                port=body.get('port', defaults.DEVICE_OPTIONAL_DEFAULTS['port']),
+                autosnat=body.get('autosnat', defaults.DEVICE_OPTIONAL_DEFAULTS['autosnat']),
+                v_method=body.get('v_method', defaults.DEVICE_OPTIONAL_DEFAULTS['v_method']),
+                shared_partition=body.get('shared_partition', defaults.DEVICE_OPTIONAL_DEFAULTS['shared_partition']),
+                use_float=body.get('use_float', defaults.DEVICE_OPTIONAL_DEFAULTS['use_float']),
+                default_virtual_server_vrid=body.get('default_virtual_server_vrid', defaults.DEVICE_OPTIONAL_DEFAULTS['default_virtual_server_vrid']),
+                ipinip=body.get('ipinip', defaults.DEVICE_OPTIONAL_DEFAULTS['ipinip']),
+                write_memory=body.get('write_memory', defaults.DEVICE_OPTIONAL_DEFAULTS['write_memory']),
                 # Not all device records are nova instances
-                nova_instance_id=body.get('nova_instance_id'),
-                write_memory=body.get('write_memory', False),
-                host=body['host'])
+                nova_instance_id=body.get('nova_instance_id'))
             context.session.add(device_record)
 
         self._add_device_kv(context, config, device_id)
@@ -175,7 +176,7 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
             if '1146' in e.message:
                 LOG.debug("A10DeviceDbMixin:get_a10_devices() Handling \"Table Doesn't Exist\" ProgrammingError Exception:  %s" % 
                       ( e.message ))
-                return []
+                return ['Table is not there...']
             else:
                 raise
 
