@@ -192,7 +192,20 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
         LOG.debug("A10DevicePlugin.create_a10_device(): device=%s", a10_device)
 
         # Else, raise an exception because that's what we would do anyway
-        return super(A10DevicePlugin, self).create_a10_device(context, a10_device)
+        # Catch database error when a10_device table doesn't exist yet and return an empty list
+        from sqlalchemy.exc import ProgrammingError
+        try:
+            return super(A10DevicePlugin, self).create_a10_device(context, a10_device)
+        except ProgrammingError as e:
+            # NO_SUCH_TABLE = 1146 in https://github.com/PyMySQL/PyMySQL/blob/master/pymysql/constants/ER.py
+            if '1146' in e.message:
+                LOG.debug("A10DevicePlugin:create_a10_devices() Handling \"Table Doesn't Exist\" ProgrammingError Exception:  %s" %
+                      ( e.message ))
+                return ['Table is not there...']
+            else:
+                raise
+
+
 
     def get_a10_device(self, context, id, fields=None):
         LOG.debug("A10DevicePlugin.get_a10_device(): id=%s, fields=%s",
@@ -202,10 +215,12 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
         if db_instance.get("nova_instance_id"):
             return {}
 
-        extra_resources = db_instance['extra_resources']
-        del db_instance['extra_resources']
-
-        return db_instance, extra_resources
+        try:
+            extra_resources = db_instance['extra_resources']
+            del db_instance['extra_resources']
+            return db_instance, extra_resources
+        except KeyError:
+            return db_instance, []
 
     def update_a10_device(self, context, id, device):
         LOG.debug(
@@ -294,5 +309,4 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
     def delete_a10_device_value(self, context, id):
         LOG.debug("A10DevicePlugin.a10_device_delete_value(): id=%s", id)
         return super(A10DevicePlugin, self).delete_a10_device_value(context, id)
-
 
