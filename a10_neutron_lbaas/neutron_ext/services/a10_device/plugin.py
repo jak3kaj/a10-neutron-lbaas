@@ -222,14 +222,14 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
         except KeyError:
             return db_instance, []
 
-    def update_a10_device(self, context, id, device):
+    def update_a10_device(self, context, id, a10_device):
         LOG.debug(
             "A10DevicePlugin.update_a10_device(): id=%s, device=%s",
             id,
-            device)
+            a10_device)
 
         return super(A10DevicePlugin, self).update_a10_device(
-            context, id, device)
+            context, id, a10_device)
 
     def delete_a10_device(self, context, id):
         LOG.debug("A10DevicePlugin.a10_device_delete(): id=%s", id)
