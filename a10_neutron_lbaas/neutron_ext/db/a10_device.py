@@ -32,6 +32,9 @@ from a10_neutron_lbaas.neutron_ext.common import attributes
 from a10_neutron_lbaas.neutron_ext.common import constants
 from a10_neutron_lbaas.etc import defaults
 
+RESOURCE_ATTRIBUTE_MAP = resources.apply_template(a10_device_resources.RESOURCE_ATTRIBUTE_MAP,
+                                                  attributes)
+
 
 LOG = logging.getLogger(__name__)
 
@@ -118,6 +121,45 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
             res['extra_resources'].append({str(key): mapped_resource})
         return self._fields(res, fields)
 
+    def _get_a10_opts(self, a10_opts):
+
+        # Filter for options with commas in them
+        # Split comma separated strings into separate options
+        # append all options to new list
+        opts=[]
+        for opt in a10_opts:
+            if ',' in opt:
+                for sub_opt in opt.split(','):
+                    opts.append(sub_opt)
+            else:
+                opts.append(opt)
+
+        # Inspect each option looking for key value pairs
+        # Assume an option name with no value is Boolean True
+        # Rely on the default of all Boolean options to be False during create
+        # Appending 'no-' to any Boolean option will set it to False for updates
+        opts_dict={}
+        LOG.debug("A10DeviceDbMixin:_get_10_opts() RESOURCE_ATTRIBUTE_MAP: {}".format( RESOURCE_ATTRIBUTE_MAP['a10_devices'].keys() ))
+        valid_opts = RESOURCE_ATTRIBUTE_MAP['a10_devices'].keys() 
+        for opt in opts:
+            if '=' in opt:
+                (k, v) = opt.split('=')
+                if k in valid_opts:
+                    opts_dict[k.strip()]=v.strip()
+                else:
+                    pass
+            else:
+                if opt in valid_opts:
+                    opts_dict[opt.strip()]=True
+                elif opt.startswith('no-'):
+                    false_opt = opt.replace('no-','').strip()
+                    if false_opt in valid_opts:
+                        opts_dict[false_opt]=False
+                else:
+                    pass
+
+        return opts_dict
+
     def create_a10_device(self, context, a10_device, resource='a10_device'):
         body = self._get_device_body(a10_device, resource)
         device_id = _uuid_str()
@@ -128,6 +170,12 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                 config.update(dict([tuple(entry.split('='))]))
 
         config = self._config_keys_exist(context, config) 
+
+        if 'a10_opts' in body:
+            a10_opts = self._get_a10_opts(body['a10_opts'])
+            for k,v in a10_opts.items():
+                LOG.debug("A10DeviceDbMixin:create_a10_devices() opts_dict %s=%s" % (k,v))
+
         with context.session.begin(subtransactions=True):
             device_record = models.A10Device(
                 id=device_id,
@@ -138,15 +186,15 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                 username=body['username'],
                 password=body['password'],
                 api_version=body['api_version'],
-                protocol=body.get('protocol', defaults.DEVICE_OPTIONAL_DEFAULTS['protocol']),
-                port=body.get('port', defaults.DEVICE_OPTIONAL_DEFAULTS['port']),
-                autosnat=body.get('autosnat', defaults.DEVICE_OPTIONAL_DEFAULTS['autosnat']),
-                v_method=body.get('v_method', defaults.DEVICE_OPTIONAL_DEFAULTS['v_method']),
-                shared_partition=body.get('shared_partition', defaults.DEVICE_OPTIONAL_DEFAULTS['shared_partition']),
-                use_float=body.get('use_float', defaults.DEVICE_OPTIONAL_DEFAULTS['use_float']),
-                default_virtual_server_vrid=body.get('default_virtual_server_vrid', defaults.DEVICE_OPTIONAL_DEFAULTS['default_virtual_server_vrid']),
-                ipinip=body.get('ipinip', defaults.DEVICE_OPTIONAL_DEFAULTS['ipinip']),
-                write_memory=body.get('write_memory', defaults.DEVICE_OPTIONAL_DEFAULTS['write_memory']),
+                protocol=a10_opts.get('protocol', defaults.DEVICE_OPTIONAL_DEFAULTS['protocol']),
+                port=a10_opts.get('port', defaults.DEVICE_OPTIONAL_DEFAULTS['port']),
+                autosnat=a10_opts.get('autosnat', defaults.DEVICE_OPTIONAL_DEFAULTS['autosnat']),
+                v_method=a10_opts.get('v_method', defaults.DEVICE_OPTIONAL_DEFAULTS['v_method']),
+                shared_partition=a10_opts.get('shared_partition', defaults.DEVICE_OPTIONAL_DEFAULTS['shared_partition']),
+                use_float=a10_opts.get('use_float', defaults.DEVICE_OPTIONAL_DEFAULTS['use_float']),
+                default_virtual_server_vrid=a10_opts.get('default_virtual_server_vrid', defaults.DEVICE_OPTIONAL_DEFAULTS['default_virtual_server_vrid']),
+                ipinip=a10_opts.get('ipinip', defaults.DEVICE_OPTIONAL_DEFAULTS['ipinip']),
+                write_memory=a10_opts.get('write_memory', defaults.DEVICE_OPTIONAL_DEFAULTS['write_memory']),
                 # Not all device records are nova instances
                 nova_instance_id=body.get('nova_instance_id'))
             context.session.add(device_record)
@@ -174,8 +222,9 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
         except ProgrammingError as e:
             # NO_SUCH_TABLE = 1146 in https://github.com/PyMySQL/PyMySQL/blob/master/pymysql/constants/ER.py
             if '1146' in e.message:
-                LOG.debug("A10DeviceDbMixin:get_a10_devices() Handling \"Table Doesn't Exist\" ProgrammingError Exception:  %s" % 
-                      ( e.message ))
+                LOG.debug("A10DeviceDbMixin:get_a10_devices() Handling ",
+                    "\"Table Doesn't Exist\" ProgrammingError Exception: %s" % 
+                    ( e.message ))
                 return ['Table is not there...']
             else:
                 raise
@@ -191,11 +240,15 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
             context.session.delete(device)
 
     def update_a10_device(self, context, id, a10_device, resource='a10_device'):
+        LOG.debug("A10DeviceDbMixin:update_a10_device() id=%s" %
+                  (id))
         with context.session.begin(subtransactions=True):
             device = self._get_by_id(context, models.A10Device,
                                        id)
+            if 'a10_opts' in a10_device[resource]:
+                device.update(**self._get_a10_opts(
+                                a10_device.get(resource).pop('a10_opts')))
             device.update(**a10_device.get(resource))
-
             return self._make_a10_device_dict(device)
 
     def _get_device_key_body(self, a10_device_key):
