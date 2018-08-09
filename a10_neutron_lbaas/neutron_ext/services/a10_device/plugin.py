@@ -224,7 +224,7 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
 
     def update_a10_device(self, context, id, a10_device):
         LOG.debug(
-            "A10DevicePlugin.update_a10_device(): id=%s, device=%s",
+            "A10DevicePlugin.update_a10_device(): id=%s, a10_device=%s",
             id,
             a10_device)
 
