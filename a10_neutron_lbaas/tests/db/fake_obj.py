@@ -20,6 +20,7 @@ tested on in dictionary and object form.
 
 """
 
+
 class FakeA10Device(object):
 
     def __init__(self):
@@ -58,15 +59,15 @@ class FakeA10Device(object):
             'allow_put': True,
             'validate': {
                 'type:string': None,
-                },
+            },
             'is_visible': True,
             'default': 'fake-value'
-            }
+        }
         return mapped_resource
 
 
 class FakeA10DeviceKey(object):
-    
+
     def __init__(self):
         self.name = 'fake-name'
         self.description = 'fake-description'
