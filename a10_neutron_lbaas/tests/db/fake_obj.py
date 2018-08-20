@@ -24,24 +24,26 @@ tested on in dictionary and object form.
 class FakeA10Device(object):
 
     def __init__(self):
-        self.name = 'fake-name'
         self.description = 'fake-description'
-        self.host = 'fake-host'
-        self.api_version = 'fake-version'
-        self.username = 'fake-username'
-        self.password = 'fake-password'
-        self.autosnat = False
-        self.default_virtual_server_vrid = None
+        self.name = 'fake-name'
         self.nova_instance_id = None
-        self.ipinip = False
-        self.use_float = False
-        self.v_method = 'LSI'
-        self.shared_partition = 'shared'
-        self.write_memory = False
         self.project_id = 'fake-tenant-id'
-        self.protocol = 'https'
-        self.port = 442
+
+        self.a10_opts = ['no-autosnat',
+                         'no-default_virtual_server_vrid',
+                         'no-ipinip',
+                         'port=442',
+                         'protocol=https',
+                         'shared_partition=shared',
+                         'no-use_float',
+                         'v_method=LSI',
+                         'no-write_memory']
+        self.api_version = 'fake-version'
         self.config = ''
+        self.host = 'fake-host'
+        self.password = 'fake-password'
+        self.username = 'fake-username'
+
         super(FakeA10Device, self).__init__()
 
     def __setitem__(self, key, item):

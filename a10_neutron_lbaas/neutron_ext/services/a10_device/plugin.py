@@ -42,6 +42,7 @@ _vthunder_mappings = [("id", None, None, "id"),
                       ("username", "username", None, "username"),
                       ("password", "password", None, "password"),
                       ("api_version", "api_version", None, "api_version"),
+                      ("a10_opts", "a10_opts", None, "a10_opts"),
                       ("protocol", "protocol", None, "protocol"),
                       ("port", "port", None, "port"),
                       ("nova_instance_id", None, "nova_instance_id", "nova_instance_id"),
@@ -109,7 +110,7 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
         imgr = instance_manager.InstanceManager.from_config(config, context)
 
         dev_instance = common_resources.remove_attributes_not_specified(
-            a10_vthunder.get(resources.VTHUNDER))
+            self.flatten_a10_opts(a10_vthunder.get(resources.VTHUNDER)))
 
         # Create the instance with specified defaults.
         vthunder_config = vthunder_defaults.copy()
@@ -152,7 +153,7 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
             vthunder)
 
         db_instance = super(A10DevicePlugin, self).update_a10_device(
-            context, id, vthunder, 'vthunder')
+            context, id, vthunder, 'a10_vthunder')
 
         return _make_api_dict(db_instance)
 
@@ -186,15 +187,32 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
 
         return db_instances
 
-    def create_a10_device(self, context, a10_device):
+    def flatten_a10_opts(self, body, resource='a10_device'):
+        '''
+        Convert --a10-opts sub-dict to same level as other passed options
+        '''
+        LOG.debug("A10DevicePlugin.flatten_a10_opts()")
+        return super(A10DevicePlugin, self).flatten_a10_opts(body)
+
+    def convert_a10_device_body(self, body, tenant_id, device_id, resource='a10_device'):
+        '''
+        Convert --a10-opts sub-dict to same level as other passed options and
+        set default values to body
+        '''
+        LOG.debug("A10DevicePlugin.convert_a10_device_body()")
+        return super(A10DevicePlugin, self).convert_a10_device_body(
+            body, tenant_id, device_id, resource)
+
+    def create_a10_device(self, context, a10_device, resource='a10_device'):
         """Attempt to create vthunder using neutron context"""
-        LOG.debug("A10DevicePlugin.create_a10_device(): device=%s", a10_device)
+        LOG.debug("A10DevicePlugin.create_a10_device(): ",
+                  "device=%s resource=%s" % (a10_device, resource))
 
         # Else, raise an exception because that's what we would do anyway
         # Catch database error when a10_device table doesn't exist yet and return an empty list
         from sqlalchemy.exc import ProgrammingError
         try:
-            return super(A10DevicePlugin, self).create_a10_device(context, a10_device)
+            return super(A10DevicePlugin, self).create_a10_device(context, a10_device, resource)
         except ProgrammingError as e:
             # NO_SUCH_TABLE = PyMySQL 1146
             if '1146' in e.message:

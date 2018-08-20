@@ -117,7 +117,9 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
             res['extra_resources'].append({str(key): mapped_resource})
         return self._fields(res, fields)
 
-    def _get_a10_opts(self, a10_opts):
+    def _get_a10_opts(self, a10_opts, resource):
+
+        device_type = resource + 's'
 
         # Filter for options with commas in them
         # Split comma separated strings into separate options
@@ -131,11 +133,13 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                 opts.append(opt)
 
         # Inspect each option looking for key value pairs
+        # Treat all values as strings
         # Assume an option name with no value is Boolean True
-        # Rely on the default of all Boolean options to be False during create
         # Appending 'no-' to any Boolean option will set it to False for updates
+        # Lookup the type of any option with 'no-' prefix.  If not boolean, then
+        # it will be set to None (which will be NULL in the db)
         opts_dict = {}
-        valid_opts = RESOURCE_ATTRIBUTE_MAP['a10_devices'].keys()
+        valid_opts = RESOURCE_ATTRIBUTE_MAP[device_type].keys()
         for opt in opts:
             if '=' in opt:
                 (k, v) = opt.split('=')
@@ -149,11 +153,103 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                 elif opt.startswith('no-'):
                     false_opt = opt.replace('no-', '').strip()
                     if false_opt in valid_opts:
-                        opts_dict[false_opt] = False
+                        for opt_type in RESOURCE_ATTRIBUTE_MAP[
+                                device_type].get(false_opt).get(
+                                'validate').keys():
+                            if "type:boolean" in opt_type:
+                                opts_dict[false_opt] = False
+                            elif opt_type.startswith("type:"):
+                                opts_dict[false_opt] = None
                 else:
                     pass
 
         return opts_dict
+
+    def flatten_a10_opts(self, body, resource='a10_device'):
+        '''
+        Return flat dict containing top level options and a10_opts
+        Only populate provided options, don't populate defaults
+        Convert a10_opts dict to flat device record ready to insert into db
+        provide resource name if a10_vthunder type
+        '''
+
+        body.update(self._get_a10_opts(body.pop('a10_opts', {}), resource))
+        return body
+
+    def convert_a10_device_body(self, body, tenant_id, device_id, resource='a10_device'):
+        '''
+        Create full device record including provided device_id and tenant_id.
+        Populate default values if option is not specified
+        Convert a10_opts dict to flat device record ready to insert into db
+        provide resource name if a10_vthunder type
+        '''
+
+        body = self.flatten_a10_opts(body, resource)
+
+        global_defaults = {'id': device_id,
+                           'tenant_id': tenant_id,
+                           'name': body.get('name', ''),
+                           'description': body.get('description', ''),
+                           'host': body['host'],
+                           'username': body['username'],
+                           'password': body['password'],
+                           'api_version': body['api_version'],
+                           # Not all device records are nova instances
+                           'nova_instance_id': body.get('nova_instance_id')}
+
+        a10_device_defaults = {
+            'protocol': body.get(
+                'protocol', defaults.DEVICE_OPTIONAL_DEFAULTS['protocol']),
+            'port': int(body.get(
+                'port', defaults.DEVICE_OPTIONAL_DEFAULTS['port'])),
+            'autosnat': body.get(
+                'autosnat', defaults.DEVICE_OPTIONAL_DEFAULTS['autosnat']),
+            'v_method': body.get(
+                'v_method', defaults.DEVICE_OPTIONAL_DEFAULTS['v_method']),
+            'shared_partition': body.get(
+                'shared_partition',
+                defaults.DEVICE_OPTIONAL_DEFAULTS['shared_partition']),
+            'use_float': body.get(
+                'use_float', defaults.DEVICE_OPTIONAL_DEFAULTS['use_float']),
+            'default_virtual_server_vrid': body.get(
+                'default_virtual_server_vrid',
+                defaults.DEVICE_OPTIONAL_DEFAULTS[
+                    'default_virtual_server_vrid']),
+            'ipinip': body.get(
+                'ipinip', defaults.DEVICE_OPTIONAL_DEFAULTS['ipinip']),
+            'write_memory': body.get(
+                'write_memory',
+                defaults.DEVICE_OPTIONAL_DEFAULTS['write_memory'])}
+
+        a10_vthunder_defaults = {
+            'protocol': body.get(
+                'protocol',
+                defaults.VTHUNDER_OPTIONAL_DEFAULTS['protocol']),
+            'port': int(body.get(
+                'port', defaults.VTHUNDER_OPTIONAL_DEFAULTS['port'])),
+            'autosnat': body.get(
+                'autosnat', defaults.VTHUNDER_OPTIONAL_DEFAULTS['autosnat']),
+            'v_method': body.get(
+                'v_method', defaults.VTHUNDER_OPTIONAL_DEFAULTS['v_method']),
+            'shared_partition': body.get(
+                'shared_partition',
+                defaults.VTHUNDER_OPTIONAL_DEFAULTS['shared_partition']),
+            'use_float': body.get(
+                'use_float', defaults.VTHUNDER_OPTIONAL_DEFAULTS['use_float']),
+            'default_virtual_server_vrid': body.get(
+                'default_virtual_server_vrid', None),
+            'ipinip': body.get(
+                'ipinip', defaults.VTHUNDER_OPTIONAL_DEFAULTS['ipinip']),
+            'write_memory': body.get(
+                'write_memory',
+                defaults.VTHUNDER_OPTIONAL_DEFAULTS['write_memory'])}
+
+        device_defaults = {'a10_device': a10_device_defaults,
+                           'a10_vthunder': a10_vthunder_defaults}
+        device_record = {}
+        device_record.update(global_defaults)
+        device_record.update(device_defaults[resource])
+        return device_record
 
     def create_a10_device(self, context, a10_device, resource='a10_device'):
         body = self._get_device_body(a10_device, resource)
@@ -166,47 +262,12 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
 
         config = self._config_keys_exist(context, config)
 
-        if 'a10_opts' in body:
-            a10_opts = self._get_a10_opts(body['a10_opts'])
-
         with context.session.begin(subtransactions=True):
             device_record = models.A10Device(
-                id=device_id,
-                tenant_id=context.tenant_id,
-                name=body.get('name', ''),
-                description=body.get('description', ''),
-                host=body['host'],
-                username=body['username'],
-                password=body['password'],
-                api_version=body['api_version'],
-                protocol=a10_opts.get(
-                    'protocol',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS['protocol']),
-                port=a10_opts.get(
-                    'port', defaults.DEVICE_OPTIONAL_DEFAULTS['port']),
-                autosnat=a10_opts.get(
-                    'autosnat',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS['autosnat']),
-                v_method=a10_opts.get(
-                    'v_method',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS['v_method']),
-                shared_partition=a10_opts.get(
-                    'shared_partition',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS['shared_partition']),
-                use_float=a10_opts.get(
-                    'use_float',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS['use_float']),
-                default_virtual_server_vrid=a10_opts.get(
-                    'default_virtual_server_vrid',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS[
-                        'default_virtual_server_vrid']),
-                ipinip=a10_opts.get(
-                    'ipinip', defaults.DEVICE_OPTIONAL_DEFAULTS['ipinip']),
-                write_memory=a10_opts.get(
-                    'write_memory',
-                    defaults.DEVICE_OPTIONAL_DEFAULTS['write_memory']),
-                # Not all device records are nova instances
-                nova_instance_id=body.get('nova_instance_id'))
+                **self.convert_a10_device_body(body,
+                                               context.tenant_id,
+                                               device_id,
+                                               resource))
             context.session.add(device_record)
 
         self._add_device_kv(context, config, device_id)
@@ -255,10 +316,7 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
         LOG.debug("A10DeviceDbMixin:update_a10_device() id=%s" % (id))
         with context.session.begin(subtransactions=True):
             device = self._get_by_id(context, models.A10Device, id)
-            if 'a10_opts' in a10_device[resource]:
-                device.update(**self._get_a10_opts(
-                              a10_device.get(resource).pop('a10_opts')))
-            device.update(**a10_device.get(resource))
+            device.update(**self.flatten_a10_opts(a10_device.get(resource)))
             return self._make_a10_device_dict(device)
 
     def _get_device_key_body(self, a10_device_key):

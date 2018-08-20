@@ -164,6 +164,14 @@ class A10DevicePluginBase(ServicePluginBase):
         pass
 
     @abc.abstractmethod
+    def convert_a10_device_body(self, body, tenant_id, device_id):
+        pass
+
+    @abc.abstractmethod
+    def flatten_a10_opts(self, body):
+        pass
+
+    @abc.abstractmethod
     def create_a10_device(self, context, a10_device):
         pass
 
