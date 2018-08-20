@@ -80,25 +80,28 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
             self.create_a10_device_value(context, device_value)
 
     def _make_a10_device_dict(self, a10_device_db, fields=None):
-        res = {'id': a10_device_db.id,
+        res = {'description': a10_device_db.description,
+               'id': a10_device_db.id,
                'name': a10_device_db.name,
-               'description': a10_device_db.description,
-               'tenant_id': a10_device_db.tenant_id,
-               'username': a10_device_db.username,
-               'password': a10_device_db.password,
-               'api_version': a10_device_db.api_version,
-               'protocol': a10_device_db.protocol,
-               'port': a10_device_db.port,
-               'autosnat': a10_device_db.autosnat,
-               'v_method': a10_device_db.v_method,
-               'shared_partition': a10_device_db.shared_partition,
-               'use_float': a10_device_db.use_float,
-               'default_virtual_server_vrid': a10_device_db.default_virtual_server_vrid,
-               'ipinip': a10_device_db.ipinip,
                # Not all device records are nova instances
                'nova_instance_id': a10_device_db.nova_instance_id,
+               'tenant_id': a10_device_db.tenant_id,
+
+               'api_version': a10_device_db.api_version,
                'host': a10_device_db.host,
+               'password': a10_device_db.password,
+               'username': a10_device_db.username,
+
+               'autosnat': a10_device_db.autosnat,
+               'default_virtual_server_vrid': a10_device_db.default_virtual_server_vrid,
+               'ipinip': a10_device_db.ipinip,
+               'port': a10_device_db.port,
+               'protocol': a10_device_db.protocol,
+               'shared_partition': a10_device_db.shared_partition,
+               'use_float': a10_device_db.use_float,
+               'v_method': a10_device_db.v_method,
                'write_memory': a10_device_db.write_memory,
+
                'extra_resources': []}
 
         for device_value in a10_device_db.config:

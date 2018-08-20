@@ -111,13 +111,15 @@ devices = {
         "protocol": "https",
         "v_method": "LSI",
         "shared_partition": "mypart",
+        "api_version": "3.0",
     },
     "axadp-noalt": {
         "host": "10.10.100.24",
         "username": "admin",
         "password": "a10",
         "protocol": "https",
-        "v_method": "LSI"
+        "v_method": "LSI",
+        "api_version": "3.0",
     },
     "ax-nowrite": {
         "host": "10.10.100.24",
@@ -125,12 +127,14 @@ devices = {
         "password": "a10",
         "protocol": "https",
         "write_memory": False,
+        "api_version": "3.0",
     },
     "ax-write": {
         "host": "10.10.100.24",
         "username": "admin",
         "password": "a10",
         "protocol": "https",
+        "api_version": "3.0",
     },
     "axipinip": {
         "host": "10.48.5.219",

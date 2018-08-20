@@ -18,6 +18,7 @@ import a10_neutron_lbaas.tests.db.fake_obj as fake_obj
 import a10_neutron_lbaas.tests.db.test_base as test_base
 import a10_neutron_lbaas.tests.unit.unit_config.helper as unit_config
 
+from a10_neutron_lbaas.db import models
 from a10_neutron_lbaas.neutron_ext.common import constants
 from a10_neutron_lbaas.neutron_ext.db import a10_device
 from a10_neutron_lbaas.neutron_ext.extensions import a10Device
@@ -107,13 +108,24 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         device = self.fake_device()
         device.id = 'new-id'
         device.tenant_id = 'new-tenant-id'
-
+        # Convert a10_opts dict to flat device record ready to insert into db
+        device_record = {}
+        device_record.update(
+            self.db_extension.convert_a10_device_body(device.__dict__,
+                                                      device.tenant_id,
+                                                      device.id))
+        # Create A10Device object from device record dict
+        device = models.A10Device(**device_record)
         result = self.db_extension._make_a10_device_dict(device)
-
-        del device.config
-        device.project_id = 'new-tenant-id'
-        device.extra_resources = []
-        self.assertEqual(result, device.__dict__)
+        device_record.update(
+            {
+                'project_id': 'new-tenant-id',
+                'extra_resources': []
+            })
+        device_record.pop('config', None)
+        # Compare dict input to A10Device model to
+        # output of _make_a10_device_dict
+        self.assertEqual(result, device_record)
 
     def test_make_device_dict_fields(self):
         pass
@@ -127,7 +139,11 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         self.assertIsNot(result['id'], None)
 
         expected = {}
-        expected.update(device.__dict__)
+        # Convert a10_opts dict to flat device record ready to insert into db
+        expected.update(
+            self.db_extension.convert_a10_device_body(device.__dict__,
+                                                      context.tenant_id,
+                                                      result['id']))
         expected.update(
             {
                 'id': result['id'],
@@ -135,7 +151,7 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
                 'project_id': context.tenant_id,
                 'extra_resources': []
             })
-        del expected['config']
+        expected.pop('config', None)
         self.assertEqual(expected, result)
 
     def test_get_a10_device(self):
@@ -216,7 +232,9 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         self.assertIsNot(result['id'], None)
 
         expected = {}
-        expected.update(device.__dict__)
+        # Convert a10_opts dict to flat device record ready to insert into db
+        expected.update(
+            self.db_extension.flatten_a10_opts(device.__dict__,))
         expected.update(
             {
                 'id': result['id'],
@@ -224,6 +242,7 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
                 'project_id': context.tenant_id,
                 'extra_resources': []
             })
+        expected.pop('config', None)
         self.assertEqual(expected, result)
 
     def fake_device_key(self):
