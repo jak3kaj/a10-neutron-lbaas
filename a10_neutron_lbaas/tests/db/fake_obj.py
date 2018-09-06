@@ -32,16 +32,15 @@ class FakeA10Device(object):
         self.a10_opts = ['no-autosnat',
                          'no-default_virtual_server_vrid',
                          'no-ipinip',
-                         'port=442',
-                         'protocol=https',
                          'shared_partition=shared',
                          'no-use_float',
                          'v_method=LSI',
-                         'no-write_memory']
+                         'write_memory']
         self.api_version = 'fake-version'
-        self.config = ''
         self.host = 'fake-host'
         self.password = 'fake-password'
+        self.port = '442'
+        self.protocol = 'https'
         self.username = 'fake-username'
 
         super(FakeA10Device, self).__init__()
@@ -109,23 +108,16 @@ class FakeA10vThunder(object):
         self.nova_instance_id = None
         self.project_id = 'fake-tenant-id'
 
-        self.a10_opts = ['no-autosnat',
-                         'no-default_virtual_server_vrid',
-                         'no-ipinip',
-                         'port=12345',
-                         'protocol=http',
-                         'no-use_float',
-                         'v_method=LSI',
-                         'no-write_memory']
         self.api_version = 'fake-version'
-        self.config = ''
+        #self.data_networks = ['that_network'],
+        #self.flavor = 'MY_FAKE_FLAVOR',
         self.host = 'fake-host'
+        #self.image = 'MY_FAKE_IMAGE',
+        #self.management_network = 'this_network',
         self.password = 'fake-password'
+        self.port = '12345'
+        self.protocol = 'https'
         self.username = 'fake-username'
-        self.image = 'MY_FAKE_IMAGE',
-        self.flavor = 'MY_FAKE_FLAVOR',
-        self.management_network = 'this_network',
-        self.data_networks = ['that_network'],
 
         super(FakeA10vThunder, self).__init__()
 

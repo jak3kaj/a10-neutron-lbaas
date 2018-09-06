@@ -74,8 +74,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
             'api_version': 'fake-version',
             'username': 'fake-username',
             'password': 'fake-password',
-            'a10_opts': ['protocol=http',
-                         'port=12345']
+            'protocol': 'https',
+            'port': '12345'
         }
 
     def _build_instance(self):
@@ -133,10 +133,12 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
             context, self.envelope_vthunder(instance))
         self.assertIsNotNone(result['id'])
 
+        result.pop('extra_resources', None)
         expected = self.vthunder_default_options()
         expected.update(
-            self.plugin.flatten_a10_opts(instance,
-                                         'a10_vthunder'))
+            self.plugin.validate_a10_opts(instance,
+                                          'a10_vthunder'))
+        expected.pop('a10_opts', None)
         expected.update(
             {
                 'id': result['id'],
@@ -145,11 +147,12 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
                 'tenant_id': context.tenant_id,
                 'project_id': context.tenant_id,
                 'api_version': 'fake-version',
+                'name': 'fake-name',
                 'username': 'fake-username',
                 'password': 'fake-password',
-                'protocol': 'http',
+                'protocol': 'https',
                 'port': 12345,
-                'extra_resources': [],
+                #'extra_resources': [],
                 'description': '',
             })
 
@@ -162,26 +165,14 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
             context, self.envelope_vthunder(instance.__dict__))
         self.assertIsNotNone(result['id'])
 
+        result.pop('extra_resources', None)
         expected = self.vthunder_default_options()
         # Convert a10_opts dict to flat device record ready to insert into db
         expected.update(
-            self.plugin.convert_a10_device_body(instance.__dict__,
+            self.plugin.a10_device_body_defaults(instance.__dict__,
                                                 context.tenant_id,
                                                 result['id']))
-        opts_to_remove = ('autosnat',
-                          'config',
-                          'data_networks',
-                          'default_virtual_server_vrid',
-                          'flavor'
-                          'image',
-                          'ipinip',
-                          'management_network',
-                          'shared_partition',
-                          'use_float',
-                          'v_method',
-                          'write_memory')
-        for opt in opts_to_remove:
-            expected.pop(opt, None)
+        expected.pop('a10_opts', None)
         expected.update(
             {
                 'id': result['id'],
@@ -189,7 +180,7 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
                 'host': result['host'],
                 'tenant_id': context.tenant_id,
                 'project_id': context.tenant_id,
-                'extra_resources': [],
+                #'extra_resources': [],
 
             })
         self.assertEqual(expected, result)
@@ -216,8 +207,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
     def test_get_a10_vthunder(self):
         instance = self.fake_vthunder()
         create_context = self.context()
-        create_result = self.plugin.create_a10_vthunder(create_context,
-                                                        self.envelope_vthunder(instance.__dict__))
+        create_result = self.plugin.create_a10_vthunder(
+            create_context, self.envelope_vthunder(instance.__dict__))
 
         context = self.context()
         result = self.plugin.get_a10_vthunder(context, create_result['id'])
@@ -252,13 +243,18 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
             context, self.envelope_device(device.__dict__))
         self.assertIsNotNone(result['id'])
 
+        result.pop('extra_resources', None)
         expected = {}
         # Convert a10_opts dict to flat device record ready to insert into db
         expected.update(
-            self.plugin.convert_a10_device_body(device.__dict__,
+            self.plugin.a10_device_body_defaults(device.__dict__,
                                                 context.tenant_id,
                                                 result['id'],
                                                 'a10_device'))
+        expected.update(
+            self.plugin.a10_opts_defaults(
+                self.plugin.validate_a10_opts(
+                    device.a10_opts,'a10_device'), 'a10_device'))
         expected.pop('config', None)
         expected.update(
             {
@@ -267,7 +263,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
                 'tenant_id': context.tenant_id,
                 'project_id': context.tenant_id,
                 'nova_instance_id': None,
-                'extra_resources': []
+                'conn_limit': str(expected['conn_limit']),
+                #'extra_resources': []
             })
 
         self.assertEqual(expected, result)
@@ -281,7 +278,7 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
 
         request = {}
         request.update(
-            self.plugin.convert_a10_device_body(device.__dict__,
+            self.plugin.a10_device_body_defaults(device.__dict__,
                                                 create_context.tenant_id,
                                                 create_result['id']))
         request.pop('config', None)
@@ -382,8 +379,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
         context = self.context()
         value = fake_obj.FakeA10DeviceValue('spam&eggs', 'shrubbery')
 
-        self.plugin.update_a10_device_value(context, 'spam&eggs',
-                                            self.envelope_device_key(value.__dict__))
+        self.plugin.update_a10_device_value(context, value.key_id,
+            value.associated_obj_id, 'New-Fake-Value')
         test_super.assert_called()
 
     @patch(plugin_path + ".a10_device.A10DeviceDbMixin.get_a10_device_values")

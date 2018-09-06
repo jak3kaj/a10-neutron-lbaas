@@ -111,7 +111,7 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         # Convert a10_opts dict to flat device record ready to insert into db
         device_record = {}
         device_record.update(
-            self.db_extension.convert_a10_device_body(device.__dict__,
+            self.db_extension.a10_device_body_defaults(device.__dict__,
                                                       device.tenant_id,
                                                       device.id))
         # Create A10Device object from device record dict
@@ -138,20 +138,27 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         context.session.commit()
         self.assertIsNot(result['id'], None)
 
+        result.pop('extra_resources', None)
         expected = {}
         # Convert a10_opts dict to flat device record ready to insert into db
         expected.update(
-            self.db_extension.convert_a10_device_body(device.__dict__,
+            self.db_extension.a10_device_body_defaults(device.__dict__,
                                                       context.tenant_id,
                                                       result['id']))
+        expected.update(
+            self.db_extension.a10_opts_defaults(
+                self.db_extension.validate_a10_opts(
+                    device.a10_opts,'a10_device'), 'a10_device'))
         expected.update(
             {
                 'id': result['id'],
                 'tenant_id': context.tenant_id,
                 'project_id': context.tenant_id,
-                'extra_resources': []
+                'conn_limit': str(expected['conn_limit'])
+                #'extra_resources': []
             })
         expected.pop('config', None)
+        self.maxDiff = None
         self.assertEqual(expected, result)
 
     def test_get_a10_device(self):
@@ -223,8 +230,9 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
             context, self.envelope_device(device.__dict__))
         context.session.commit()
 
-        device.use_float = True
-        del device.__dict__['config']
+        # Set use_flaot to true for updated device 
+        device.a10_opts = ['use_float']
+            
         result = self.db_extension.update_a10_device(
             context, create_result['id'],
             self.envelope_device(device.__dict__))
@@ -232,17 +240,27 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         self.assertIsNot(result['id'], None)
 
         expected = {}
-        # Convert a10_opts dict to flat device record ready to insert into db
-        expected.update(
-            self.db_extension.flatten_a10_opts(device.__dict__,))
+        # Create an a10_opts dict from the request body
+        a10_opts = self.db_extension.validate_a10_opts(device.__dict__.pop('a10_opts', []), 'a10_device')
+        a10_opts = self.db_extension.a10_opts_defaults()
+        expected.update(a10_opts)
+        expected.update(self.db_extension.a10_device_body_defaults(device.__dict__, context.tenant_id, result['id'], 'a10_device'))
         expected.update(
             {
                 'id': result['id'],
                 'tenant_id': context.tenant_id,
                 'project_id': context.tenant_id,
+                'use_float': True,
+                'conn_limit': str(expected['conn_limit']),
+                'port': str(expected['port']),
                 'extra_resources': []
             })
-        expected.pop('config', None)
+        for a10_opt in a10_opts.keys():
+            (extra_resource, value) = self.db_extension._make_extra_resource(a10_opt, a10_opts[a10_opt], 'a10_device')
+            expected['extra_resources'].append({str(a10_opt): extra_resource})
+        expected['extra_resources'] = expected['extra_resources'].sort()
+        result['extra_resources'] = result['extra_resources'].sort()
+        self.maxDiff = None
         self.assertEqual(expected, result)
 
     def fake_device_key(self):
@@ -433,7 +451,11 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         context = self.context()
 
         result = self.db_extension.get_a10_device_values(context)
-        self.assertEqual([create_result], result)
+        for value in result:
+            if create_result['key_id'] in value['key_id']:
+                created_value_row = value
+        self.maxDiff = None
+        self.assertEqual(create_result, created_value_row)
 
     def test_delete_a10_device_value(self):
         device = self.fake_device()
@@ -492,8 +514,8 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         context = self.context()
         device_value.value = "i_dnt_like_spam"
         result = self.db_extension.update_a10_device_value(
-            context, create_result['id'],
-            self.envelope_device_value(device_value.__dict__))
+            context, key_result['id'], device_result['id'],
+            device_value.value)
         context.session.commit()
         self.assertIsNot(result['id'], None)
 

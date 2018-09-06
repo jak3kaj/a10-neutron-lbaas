@@ -39,7 +39,10 @@ class TestA10Config(test_base.UnitTestBase):
 
     def test_v_method(self):
         for k, v in self.a.config.get_devices().items():
-            self.assertEqual('LSI', v['v_method'].upper())
+            try:
+                self.assertEqual('LSI', v['v_method'].upper())
+            except KeyError:
+                self.assertEqual('LSI', None)
 
     def test_alternate_shared_partition(self):
         self.assertTrue(self.a.config.get_device('axadp-alt')['shared_partition'])
