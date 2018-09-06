@@ -29,7 +29,7 @@ from a10_neutron_lbaas.neutron_ext.common import resources
 from a10_neutron_lbaas.neutron_ext.extensions import a10Device
 
 from a10_openstack_lib.resources import a10_device as a10_device_resources
-from a10_openstack_lib.resources import validators 
+from a10_openstack_lib.resources import validators
 
 
 RESOURCE_ATTRIBUTE_MAP = resources.apply_template(a10_device_resources.RESOURCE_ATTRIBUTE_MAP,
@@ -123,9 +123,8 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
 
             if 'type:boolean' in mapped_resource['validate'].keys():
                 value = mapped_resource['convert_to'](int(value))
-                #types = attr.get('validate', {})
                 LOG.debug("A10DeviceDbMixin:_make_extra_resource() convert %s to bool %s" %
-                      (key, value))
+                          (key, value))
         else:
             LOG.error("A10DeviceDbMixin:_make_extra_resource() key %s isn't valid" % (key))
             mapped_resource = None
@@ -175,7 +174,8 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                         for opt_type in RESOURCE_ATTRIBUTE_MAP[
                                 device_type].get(false_opt).get(
                                 'validate').keys():
-                            if "type:boolean" in opt_type: opts_dict[false_opt.replace('-', '_').strip()] = False
+                            if "type:boolean" in opt_type:
+                                opts_dict[false_opt.replace('-', '_').strip()] = False
                             elif opt_type.startswith("type:"):
                                 opts_dict[false_opt] = None
                     else:
@@ -269,7 +269,6 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
 
         return full_a10_opts
 
-
     def create_a10_device(self, context, a10_device, resource='a10_device'):
         body = self._get_device_body(a10_device, resource)
         device_id = _uuid_str()
@@ -277,7 +276,7 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
         LOG.debug("A10DeviceDbMixin:create_a10_device() body=%s" %
                   (body))
 
-        a10_opts = {} 
+        a10_opts = {}
         a10_opts.update(self.validate_a10_opts(body.pop('a10_opts', []), resource))
         a10_opts = self.a10_opts_defaults(a10_opts, resource)
 
@@ -295,12 +294,12 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
                 except Exception:
                     LOG.debug("A10DeviceDbMixin:create_a10_device() key:%s doesn't exist, creating..." %
                               (key))
-                    self.create_a10_device_key(context, {a10_device_resources.DEVICE_KEY:{'name':key}})
+                    self.create_a10_device_key(
+                        context, {a10_device_resources.DEVICE_KEY: {'name': key}})
             a10_opts = self._config_keys_exist(context, a10_opts)
 
         with context.session.begin(subtransactions=True):
             device_record = models.A10Device(
-                #**self.convert_a10_device_body(body,
                 **self.a10_device_body_defaults(body,
                                                 context.tenant_id,
                                                 device_id,
@@ -357,7 +356,9 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
             a10_opts = self.validate_a10_opts(
                 a10_device.get(resource).pop('a10_opts', []), resource)
             for a10_opt in a10_opts.keys():
-                self.update_a10_device_value(context, self._get_a10_device_key_by_name(context, a10_opt).id, device_id, a10_opts[a10_opt])
+                self.update_a10_device_value(
+                    context, self._get_a10_device_key_by_name(context, a10_opt).id,
+                    device_id, a10_opts[a10_opt])
             device.update(**a10_device.get(resource))
             return self._make_a10_device_dict(device)
 
@@ -368,10 +369,8 @@ class A10DeviceDbMixin(common_db_mixin.CommonDbMixin,
     def _get_a10_device_key_by_name(self, context, key_name):
         try:
             return context.session.query(models.A10DeviceKey).filter_by(name=key_name).one()
-        #return context.session.query(models.A10DeviceKey).filter_by(name=key_name).one()
         except Exception as e:
             LOG.debug("_get_a10_device_key_by_name key_name=%s, Error: %s" % (key_name, e))
-            #return ['Table is not there...']
             raise a10Device.A10DeviceNotFoundError(key_name)
 
     def _get_a10_device_key(self, context, key_id):

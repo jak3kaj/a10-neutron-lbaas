@@ -112,8 +112,8 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         device_record = {}
         device_record.update(
             self.db_extension.a10_device_body_defaults(device.__dict__,
-                                                      device.tenant_id,
-                                                      device.id))
+                                                       device.tenant_id,
+                                                       device.id))
         # Create A10Device object from device record dict
         device = models.A10Device(**device_record)
         result = self.db_extension._make_a10_device_dict(device)
@@ -143,12 +143,12 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         # Convert a10_opts dict to flat device record ready to insert into db
         expected.update(
             self.db_extension.a10_device_body_defaults(device.__dict__,
-                                                      context.tenant_id,
-                                                      result['id']))
+                                                       context.tenant_id,
+                                                       result['id']))
         expected.update(
             self.db_extension.a10_opts_defaults(
                 self.db_extension.validate_a10_opts(
-                    device.a10_opts,'a10_device'), 'a10_device'))
+                    device.a10_opts, 'a10_device'), 'a10_device'))
         expected.update(
             {
                 'id': result['id'],
@@ -230,9 +230,9 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
             context, self.envelope_device(device.__dict__))
         context.session.commit()
 
-        # Set use_flaot to true for updated device 
+        # Set use_flaot to true for updated device
         device.a10_opts = ['use_float']
-            
+
         result = self.db_extension.update_a10_device(
             context, create_result['id'],
             self.envelope_device(device.__dict__))
@@ -241,10 +241,12 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
 
         expected = {}
         # Create an a10_opts dict from the request body
-        a10_opts = self.db_extension.validate_a10_opts(device.__dict__.pop('a10_opts', []), 'a10_device')
+        a10_opts = self.db_extension.validate_a10_opts(
+            device.__dict__.pop('a10_opts', []), 'a10_device')
         a10_opts = self.db_extension.a10_opts_defaults()
         expected.update(a10_opts)
-        expected.update(self.db_extension.a10_device_body_defaults(device.__dict__, context.tenant_id, result['id'], 'a10_device'))
+        expected.update(self.db_extension.a10_device_body_defaults(
+            device.__dict__, context.tenant_id, result['id'], 'a10_device'))
         expected.update(
             {
                 'id': result['id'],
@@ -509,7 +511,7 @@ class TestA10DeviceDbMixin(TestA10DevicePluginBase):
         create_result = self.db_extension.create_a10_device_value(
             value_context, self.envelope_device_value(device_value.__dict__))
         value_context.session.commit()
-        self.assertIsNot(key_result['id'], None)
+        self.assertIsNot(create_result['id'], None)
 
         context = self.context()
         device_value.value = "i_dnt_like_spam"

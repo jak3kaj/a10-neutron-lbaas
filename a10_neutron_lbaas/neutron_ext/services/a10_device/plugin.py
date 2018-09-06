@@ -311,9 +311,7 @@ class A10DevicePlugin(a10_device.A10DeviceDbMixin):
     def update_a10_device_value(self, context, key_id, device_id, value):
         LOG.debug(
             "A10DevicePlugin.update_a10_device_value(): key_id=%s, device_id=%s, value=%s" %
-            (key_id,
-            device_id,
-            value))
+            (key_id, device_id, value))
 
         return super(A10DevicePlugin, self).update_a10_device_value(
             context, key_id, device_id, value)

@@ -170,8 +170,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
         # Convert a10_opts dict to flat device record ready to insert into db
         expected.update(
             self.plugin.a10_device_body_defaults(instance.__dict__,
-                                                context.tenant_id,
-                                                result['id']))
+                                                 context.tenant_id,
+                                                 result['id']))
         expected.pop('a10_opts', None)
         expected.update(
             {
@@ -248,13 +248,13 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
         # Convert a10_opts dict to flat device record ready to insert into db
         expected.update(
             self.plugin.a10_device_body_defaults(device.__dict__,
-                                                context.tenant_id,
-                                                result['id'],
-                                                'a10_device'))
+                                                 context.tenant_id,
+                                                 result['id'],
+                                                 'a10_device'))
         expected.update(
             self.plugin.a10_opts_defaults(
                 self.plugin.validate_a10_opts(
-                    device.a10_opts,'a10_device'), 'a10_device'))
+                    device.a10_opts, 'a10_device'), 'a10_device'))
         expected.pop('config', None)
         expected.update(
             {
@@ -279,8 +279,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
         request = {}
         request.update(
             self.plugin.a10_device_body_defaults(device.__dict__,
-                                                create_context.tenant_id,
-                                                create_result['id']))
+                                                 create_context.tenant_id,
+                                                 create_result['id']))
         request.pop('config', None)
         request.update({'name': 'shrubbery'})
 
@@ -379,8 +379,8 @@ class TestPlugin(test_a10_device.TestA10DevicePluginBase):
         context = self.context()
         value = fake_obj.FakeA10DeviceValue('spam&eggs', 'shrubbery')
 
-        self.plugin.update_a10_device_value(context, value.key_id,
-            value.associated_obj_id, 'New-Fake-Value')
+        self.plugin.update_a10_device_value(
+            context, value.key_id, value.associated_obj_id, 'New-Fake-Value')
         test_super.assert_called()
 
     @patch(plugin_path + ".a10_device.A10DeviceDbMixin.get_a10_device_values")
